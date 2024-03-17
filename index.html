@@ -17,6 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
       rel="stylesheet"
     />
+    <title>Slack emoji splitter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       * {
@@ -57,13 +58,14 @@
         border: 1px solid #001aff;
         background-size: cover;
         background-position: center;
+        cursor: pointer;
       }
       .file-input {
         display: none;
       }
       .split-box {
         position: absolute;
-        border: 0px dashed #001aff;
+        border: 0px dotted #001aff;
         transition: all 0.2s ease;
       }
       input {
@@ -78,13 +80,22 @@
         cursor: pointer;
         padding: 4px 8px;
         background-color: white;
+        transition: all 0.2s ease;
       }
       button:disabled {
         opacity: 0.2;
         cursor: not-allowed;
       }
+      button:hover {
+        background-color: #f2f2f2;
+      }
       .primary-button {
         background-color: #001aff;
+        color: white;
+      }
+      .primary-button:hover {
+        background-color: #001099;
+        border-color: #001099;
         color: white;
       }
       .circle-button {
@@ -154,13 +165,35 @@
         isSplitAnimating: false
       }"
     >
-      <h1>Slack Emoji Splitter</h1>
+      <h1>Slack emoji splitter</h1>
       <div
         class="preview"
         @click="$refs.fileInput.click()"
         :style="{'background-image': `url(${imageUrl})`}"
       >
-        <p x-show="file === null" style="pointer-events: none">Upload image</p>
+        <div
+          class="flex"
+          x-show="file === null"
+          style="pointer-events: none; justify-content: center; gap: 6px"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="feather feather-upload"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Upload image
+        </div>
         <div
           x-show="file !== null"
           style="position: relative; width: 100%; height: 100%"
@@ -189,7 +222,7 @@
         class="file-input"
         type="file"
         accept="image/*"
-        @change="file = $event?.target?.files?.[0] ?? file; $nextTick(() => $refs.nameInput.focus())"
+        @change="const f = $event?.target?.files?.[0]; if (f) {file = f; $nextTick(() => $refs.nameInput.focus());}"
       />
       <div x-show="file !== null" class="flex">
         <div class="flex flex-col" style="gap: 8px">
@@ -206,8 +239,8 @@
                 :disabled="splits <= MIN_SPLITS"
               >
                 <svg
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 14 14"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -227,8 +260,8 @@
                 :disabled="splits >= MAX_SPLITS"
               >
                 <svg
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 14 14"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -252,7 +285,24 @@
         </div>
         <div class="flex flex-col" style="align-items: flex-end; gap: 8px">
           <button class="primary-button" @click="download()" :disabled="!name">
-            Download .zip
+            <div class="flex" style="gap: 6px">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="feather feather-download"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line></svg
+              >Download .zip
+            </div>
           </button>
           <button
             class="button"
@@ -268,9 +318,50 @@
               }
             }"
             @click="copySlackInputText(); showMsg();"
-            x-text="isMsgVisible ? 'Copied to clipboard!' : 'Copy Slack input'"
             :disabled="!name"
-          ></button>
+          >
+            <template x-if="!isMsgVisible">
+              <div class="flex" style="gap: 6px">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="feather feather-copy"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+                Copy Slack input
+              </div>
+            </template>
+            <template x-if="isMsgVisible">
+              <div class="flex" style="gap: 6px">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="feather feather-check"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Copied to clipboard
+              </div>
+            </template>
+          </button>
         </div>
       </div>
     </div>
