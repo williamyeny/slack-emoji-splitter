@@ -1,0 +1,278 @@
+<html>
+  <head>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://www.lactame.com/lib/image-js/0.21.2/image.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        box-sizing: border-box;
+        font-size: 14px;
+      }
+      h1 {
+        color: #001aff;
+        font-size: 16px;
+      }
+      .flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+      }
+      .flex-col {
+        flex-direction: column;
+      }
+      .container {
+        align-items: start;
+        gap: 8px;
+        max-width: 500px;
+        padding: 8px;
+        margin: 16px auto;
+      }
+      .preview {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #eeeeee;
+        width: 100%;
+        height: 500px;
+        color: #001aff;
+        border: 1px solid #001aff;
+        background-size: cover;
+        background-position: center;
+      }
+      .file-input {
+        display: none;
+      }
+      .split-box {
+        position: absolute;
+        border: 0px dashed #001aff;
+        transition: all 0.2s ease;
+      }
+      input {
+        border: 1px solid #001aff;
+        padding: 4px 8px;
+        border-radius: 8px;
+      }
+      button {
+        color: #001aff;
+        border-radius: 50px;
+        border: 1px solid #001aff;
+        cursor: pointer;
+        padding: 4px 8px;
+        background-color: white;
+      }
+      button:disabled {
+        opacity: 0.2;
+        cursor: not-allowed;
+      }
+      .primary-button {
+        background-color: #001aff;
+        color: white;
+      }
+      .circle-button {
+        background-color: white;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="container flex flex-col"
+      x-data="{
+        name: '',
+        file: null,
+        splits: 2,
+        visibleSplits: 2,
+        MIN_SPLITS: 2,
+        MAX_SPLITS: 10,
+        get imageUrl() {
+          return this.file ? URL.createObjectURL(this.file) : '';
+        },
+        copySlackInputText() {
+          let input = '';
+          for (let row = 0; row < this.splits; row++) {
+            for (let col = 0; col < this.splits; col++) {
+                input += `:${this.name}-${row + 1}-${col + 1}:`;
+            }
+            input += '\n';
+          }
+          navigator.clipboard.writeText(input);
+        },
+        async download() {
+          const img = await IJS.Image.load(this.imageUrl);
+
+          let size = Math.min(img.width, img.height);
+          size = size - (size % this.splits); // Adjust size to be divisible by splits
+
+          const croppedToSquare = img.crop({
+              x: (img.width - size) / 2,
+              y: (img.height - size) / 2,
+              width: size,
+              height: size
+          });
+          
+          const tileSize = size / this.splits;
+          const zip = new JSZip();
+          
+          for (let row = 0; row < this.splits; row++) {
+              for (let col = 0; col < this.splits; col++) {
+                  const part = croppedToSquare.crop({
+                      x: col * tileSize,
+                      y: row * tileSize,
+                      width: tileSize,
+                      height: tileSize
+                  });
+
+                  const blob = await part.toBlob('image/png');
+                  zip.file(`${this.name}-${row + 1}-${col + 1}.png`, blob);
+              }
+          }
+
+          const content = await zip.generateAsync({type:'blob'});
+          saveAs(content, `${this.name}.zip`);
+        },
+        isSplitAnimating: false
+      }"
+    >
+      <h1>Slack Emoji Splitter</h1>
+      <div
+        class="preview"
+        @click="$refs.fileInput.click()"
+        :style="{'background-image': `url(${imageUrl})`}"
+      >
+        <p x-show="file === null" style="pointer-events: none">Upload image</p>
+        <div
+          x-show="file !== null"
+          style="position: relative; width: 100%; height: 100%"
+        >
+          <template x-for="i in visibleSplits">
+            <template x-for="j in visibleSplits">
+              <div
+                class="split-box"
+                :key="`${i}-${j}`"
+                :style="{
+                  left:  isSplitAnimating ? (j === visibleSplits ? `100%` : `calc(100% / ${visibleSplits-1} * ${j - 1})` ) : `calc(100% / ${visibleSplits} * ${j - 1})`,
+                  top: isSplitAnimating ? (i == visibleSplits ? `100%`: `calc(100% / ${visibleSplits-1} * ${i - 1})` ) : `calc(100% / ${visibleSplits} * ${i - 1})`,
+                  width: isSplitAnimating ? (j === visibleSplits ? 0 : `calc(100% / ${visibleSplits-1})`) : `calc(100% / ${visibleSplits})`,
+                  height: isSplitAnimating ? (i === visibleSplits ? 0 : `calc(100% / ${visibleSplits-1})`) : `calc(100% / ${visibleSplits})`,
+                  'border-right-width': j < visibleSplits ? '2px' : '0px', 
+                  'border-bottom-width': i < visibleSplits ? '2px' : '0px'
+                }"
+              ></div>
+            </template>
+          </template>
+        </div>
+      </div>
+
+      <input
+        x-ref="fileInput"
+        class="file-input"
+        type="file"
+        accept="image/*"
+        @change="file = $event?.target?.files?.[0] ?? file; $nextTick(() => $refs.nameInput.focus())"
+      />
+      <div x-show="file !== null" class="flex">
+        <div class="flex flex-col" style="gap: 8px">
+          <div class="flex">
+            <label for="name"> Name </label>
+            <input id="name" type="text" x-model="name" x-ref="nameInput" />
+          </div>
+          <div class="flex">
+            <label> Splits </label>
+            <div class="flex" style="width: auto; gap: 8px">
+              <button
+                class="circle-button"
+                @click="if (splits > MIN_SPLITS) { isSplitAnimating = true; splits--; setTimeout(() => { visibleSplits--; isSplitAnimating = false }, 200) }"
+                :disabled="splits <= MIN_SPLITS"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M2.91663 7H11.0833"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <span x-text="splits"></span>
+              <button
+                class="circle-button"
+                @click="if (splits < MAX_SPLITS) { splits++; visibleSplits++; isSplitAnimating = true; $nextTick(() => isSplitAnimating = false) }"
+                :disabled="splits >= MAX_SPLITS"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 2.91669V11.0834"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M2.91663 7H11.0833"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col" style="align-items: flex-end; gap: 8px">
+          <button class="primary-button" @click="download()" :disabled="!name">
+            Download .zip
+          </button>
+          <button
+            class="button"
+            x-data="{
+              msgTimeout: null,
+              isMsgVisible: false, 
+              showMsg () {
+                this.isMsgVisible = true; 
+                if (this.msgTimeout) {
+                  clearTimeout(this.msgTimeout);
+                } 
+                this.msgTimeout = setTimeout(() => this.isMsgVisible = false, 2000)
+              }
+            }"
+            @click="copySlackInputText(); showMsg();"
+            x-text="isMsgVisible ? 'Copied to clipboard!' : 'Copy Slack input'"
+            :disabled="!name"
+          ></button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
