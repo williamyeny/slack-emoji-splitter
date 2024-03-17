@@ -72,6 +72,7 @@
         border: 1px solid #001aff;
         padding: 4px 8px;
         border-radius: 8px;
+        min-width: 0;
       }
       button {
         color: #001aff;
@@ -81,6 +82,7 @@
         padding: 4px 8px;
         background-color: white;
         transition: all 0.2s ease;
+        white-space: nowrap;
       }
       button:disabled {
         opacity: 0.2;
@@ -225,7 +227,7 @@
         @change="const f = $event?.target?.files?.[0]; if (f) {file = f; $nextTick(() => $refs.nameInput.focus());}"
       />
       <div x-show="file !== null" class="flex">
-        <div class="flex flex-col" style="gap: 8px">
+        <div class="flex flex-col" style="gap: 8px; width: 50%">
           <div class="flex">
             <label for="name"> Name </label>
             <input id="name" type="text" x-model="name" x-ref="nameInput" />
@@ -283,7 +285,10 @@
             </div>
           </div>
         </div>
-        <div class="flex flex-col" style="align-items: flex-end; gap: 8px">
+        <div
+          class="flex flex-col"
+          style="align-items: flex-end; gap: 8px; width: 50%"
+        >
           <button class="primary-button" @click="download()" :disabled="!name">
             <div class="flex" style="gap: 6px">
               <svg
