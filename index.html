@@ -25,6 +25,7 @@
         font-weight: 500;
         box-sizing: border-box;
         font-size: 14px;
+        line-height: 1.5;
       }
       h1 {
         color: #001aff;
@@ -113,6 +114,10 @@
       class="container flex flex-col"
       x-data="{
         name: '',
+        get isNameValid() {
+          // Only allow letters, numbers, dashes and underscores
+          return /^[a-zA-Z0-9-_]+$/.test(this.name);
+        },
         file: null,
         splits: 2,
         visibleSplits: 2,
@@ -230,7 +235,13 @@
         <div class="flex flex-col" style="gap: 8px; width: 50%">
           <div class="flex">
             <label for="name"> Name </label>
-            <input id="name" type="text" x-model="name" x-ref="nameInput" />
+            <input
+              id="name"
+              type="text"
+              x-model="name"
+              x-ref="nameInput"
+              placeholder="my-cool-emoji"
+            />
           </div>
           <div class="flex">
             <label> Splits </label>
@@ -289,7 +300,11 @@
           class="flex flex-col"
           style="align-items: flex-end; gap: 8px; width: 50%"
         >
-          <button class="primary-button" @click="download()" :disabled="!name">
+          <button
+            class="primary-button"
+            @click="download()"
+            :disabled="!isNameValid"
+          >
             <div class="flex" style="gap: 6px">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -323,7 +338,7 @@
               }
             }"
             @click="copySlackInputText(); showMsg();"
-            :disabled="!name"
+            :disabled="!isNameValid"
           >
             <template x-if="!isMsgVisible">
               <div class="flex" style="gap: 6px">
@@ -368,6 +383,11 @@
             </template>
           </button>
         </div>
+      </div>
+
+      <div x-show="splits > 4" style="color: #876634">
+        Are you sure you want this many splits? Keep in mind that all the parts
+        will need to be uploaded manually.
       </div>
     </div>
   </body>
