@@ -53,13 +53,25 @@
         justify-content: center;
         align-items: center;
         background-color: #eeeeee;
-        width: 100%;
-        aspect-ratio: 1 / 1;
+        /* width: 100%; */
+        max-width: 100%;
+        max-height: 100%;
         color: #001aff;
         border: 1px solid #001aff;
         background-size: cover;
         background-position: center;
         cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .preview-wrapper {
+        width: 100%;
+        aspect-ratio: 1/1;
+        overflow: hidden;
+        position: relative;
       }
       .file-input {
         display: none;
@@ -119,8 +131,10 @@
           return /^[a-zA-Z0-9-_]+$/.test(this.name);
         },
         file: null,
-        splits: 2,
-        visibleSplits: 2,
+        xSplits: 2,
+        ySplits: 2,
+        visibleXSplits: 2,
+        visibleYSplits: 2,
         MIN_SPLITS: 2,
         MAX_SPLITS: 10,
         get imageUrl() {
@@ -128,8 +142,8 @@
         },
         copySlackInputText() {
           let input = '';
-          for (let row = 0; row < this.splits; row++) {
-            for (let col = 0; col < this.splits; col++) {
+          for (let row = 0; row < this.ySplits; row++) {
+            for (let col = 0; col < this.xSplits; col++) {
                 input += `:${this.name}-${row + 1}-${col + 1}:`;
             }
             input += '\n';
@@ -139,22 +153,25 @@
         async download() {
           const img = await IJS.Image.load(this.imageUrl);
 
-          let size = Math.min(img.width, img.height);
-          size = size - (size % this.splits); // Adjust size to be divisible by splits
+          const tileSizeWidth = Math.floor(img.width / this.xSplits);
+          const tileSizeHeight = Math.floor(img.height / this.ySplits);
+          const tileSize = Math.min(tileSizeWidth, tileSizeHeight);
 
-          const croppedToSquare = img.crop({
-              x: (img.width - size) / 2,
-              y: (img.height - size) / 2,
-              width: size,
-              height: size
+          const widthToCrop = tileSize * this.xSplits;
+          const heightToCrop = tileSize * this.ySplits;
+
+          const croppedImage = img.crop({
+              x: (img.width - widthToCrop) / 2,
+              y: (img.height - heightToCrop) / 2,
+              width: widthToCrop,
+              height: heightToCrop
           });
           
-          const tileSize = size / this.splits;
           const zip = new JSZip();
           
-          for (let row = 0; row < this.splits; row++) {
-              for (let col = 0; col < this.splits; col++) {
-                  const part = croppedToSquare.crop({
+          for (let row = 0; row < this.ySplits; row++) {
+              for (let col = 0; col < this.xSplits; col++) {
+                  const part = croppedImage.crop({
                       x: col * tileSize,
                       y: row * tileSize,
                       width: tileSize,
@@ -169,58 +186,64 @@
           const content = await zip.generateAsync({type:'blob'});
           saveAs(content, `${this.name}.zip`);
         },
-        isSplitAnimating: false
+        isXSplitAnimating: false,
+        isYSplitAnimating: false,
       }"
     >
       <h1>Slack emoji splitter</h1>
-      <div
-        class="preview"
-        @click="$refs.fileInput.click()"
-        :style="{'background-image': `url(${imageUrl})`}"
-      >
+      <div class="preview-wrapper">
         <div
-          class="flex"
-          x-show="file === null"
-          style="pointer-events: none; justify-content: center; gap: 6px"
+          class="preview"
+          @click="$refs.fileInput.click()"
+          :style="{
+          'background-image': `url(${imageUrl})`,
+          'aspect-ratio': `${xSplits} / ${ySplits}`
+        }"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="feather feather-upload"
+          <div
+            class="flex"
+            x-show="file === null"
+            style="pointer-events: none; justify-content: center; gap: 6px"
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          Upload image
-        </div>
-        <div
-          x-show="file !== null"
-          style="position: relative; width: 100%; height: 100%"
-        >
-          <template x-for="i in visibleSplits">
-            <template x-for="j in visibleSplits">
-              <div
-                class="split-box"
-                :key="`${i}-${j}`"
-                :style="{
-                  left:  isSplitAnimating ? (j === visibleSplits ? `100%` : `calc(100% / ${visibleSplits-1} * ${j - 1})` ) : `calc(100% / ${visibleSplits} * ${j - 1})`,
-                  top: isSplitAnimating ? (i == visibleSplits ? `100%`: `calc(100% / ${visibleSplits-1} * ${i - 1})` ) : `calc(100% / ${visibleSplits} * ${i - 1})`,
-                  width: isSplitAnimating ? (j === visibleSplits ? 0 : `calc(100% / ${visibleSplits-1})`) : `calc(100% / ${visibleSplits})`,
-                  height: isSplitAnimating ? (i === visibleSplits ? 0 : `calc(100% / ${visibleSplits-1})`) : `calc(100% / ${visibleSplits})`,
-                  'border-right-width': j < visibleSplits ? '2px' : '0px', 
-                  'border-bottom-width': i < visibleSplits ? '2px' : '0px'
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="feather feather-upload"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Upload image
+          </div>
+          <div
+            x-show="file !== null"
+            style="position: relative; width: 100%; height: 100%"
+          >
+            <template x-for="i in visibleYSplits">
+              <template x-for="j in visibleXSplits">
+                <div
+                  class="split-box"
+                  :key="`${i}-${j}`"
+                  :style="{
+                  left:  isXSplitAnimating ? (j === visibleXSplits ? `100%` : `calc(100% / ${visibleXSplits-1} * ${j - 1})` ) : `calc(100% / ${visibleXSplits} * ${j - 1})`,
+                  top: isYSplitAnimating ? (i == visibleYSplits ? `100%`: `calc(100% / ${visibleYSplits-1} * ${i - 1})` ) : `calc(100% / ${visibleYSplits} * ${i - 1})`,
+                  width: isXSplitAnimating ? (j === visibleXSplits ? 0 : `calc(100% / ${visibleXSplits-1})`) : `calc(100% / ${visibleXSplits})`,
+                  height: isYSplitAnimating ? (i === visibleYSplits ? 0 : `calc(100% / ${visibleYSplits-1})`) : `calc(100% / ${visibleYSplits})`,
+                  'border-right-width': j < visibleXSplits ? '2px' : '0px', 
+                  'border-bottom-width': i < visibleYSplits ? '2px' : '0px'
                 }"
-              ></div>
+                ></div>
+              </template>
             </template>
-          </template>
+          </div>
         </div>
       </div>
 
@@ -244,12 +267,12 @@
             />
           </div>
           <div class="flex">
-            <label> Splits </label>
+            <label> Horizontal splits </label>
             <div class="flex" style="width: auto; gap: 8px">
               <button
                 class="circle-button"
-                @click="if (splits > MIN_SPLITS) { isSplitAnimating = true; splits--; setTimeout(() => { visibleSplits--; isSplitAnimating = false }, 200) }"
-                :disabled="splits <= MIN_SPLITS"
+                @click="if (xSplits > MIN_SPLITS) { isXSplitAnimating = true; xSplits--; setTimeout(() => { visibleXSplits--; isXSplitAnimating = false }, 200) }"
+                :disabled="xSplits <= MIN_SPLITS"
               >
                 <svg
                   width="16"
@@ -266,11 +289,63 @@
                   />
                 </svg>
               </button>
-              <span x-text="splits"></span>
+              <span x-text="xSplits"></span>
               <button
                 class="circle-button"
-                @click="if (splits < MAX_SPLITS) { splits++; visibleSplits++; isSplitAnimating = true; $nextTick(() => isSplitAnimating = false) }"
-                :disabled="splits >= MAX_SPLITS"
+                @click="if (xSplits < MAX_SPLITS) { xSplits++; visibleXSplits++; isXSplitAnimating = true; $nextTick(() => isXSplitAnimating = false) }"
+                :disabled="xSplits >= MAX_SPLITS"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7 2.91669V11.0834"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M2.91663 7H11.0833"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex">
+            <label> Vertical splits </label>
+            <div class="flex" style="width: auto; gap: 8px">
+              <button
+                class="circle-button"
+                @click="if (ySplits > MIN_SPLITS) { isYSplitAnimating = true; ySplits--; setTimeout(() => { visibleYSplits--; isYSplitAnimating = false }, 200) }"
+                :disabled="ySplits <= MIN_SPLITS"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M2.91663 7H11.0833"
+                    stroke="#001AFF"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <span x-text="ySplits"></span>
+              <button
+                class="circle-button"
+                @click="if (ySplits < MAX_SPLITS) { ySplits++; visibleYSplits++; isYSplitAnimating = true; $nextTick(() => isYSplitAnimating = false) }"
+                :disabled="ySplits >= MAX_SPLITS"
               >
                 <svg
                   width="16"
@@ -385,7 +460,7 @@
         </div>
       </div>
 
-      <div x-show="splits > 4" style="color: #876634">
+      <div x-show="xSplits * ySplits > 16" style="color: #876634">
         Are you sure you want this many splits? Keep in mind that all the parts
         will need to be uploaded manually.
       </div>
