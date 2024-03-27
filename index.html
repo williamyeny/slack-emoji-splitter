@@ -254,7 +254,7 @@
         accept="image/*"
         @change="const f = $event?.target?.files?.[0]; if (f) {file = f; $nextTick(() => $refs.nameInput.focus());}"
       />
-      <div x-show="file !== null" class="flex">
+      <div x-show="file !== null" class="flex" style="align-items: flex-start;">
         <div class="flex flex-col" style="gap: 8px; width: 50%">
           <div class="flex">
             <label for="name"> Name </label>
